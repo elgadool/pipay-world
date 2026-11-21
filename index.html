@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PiPay World</title>
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<script>
+  // Si l'application est lancée dans le Pi Browser, le kit Pi existe.
+  // Mets sandbox: true pendant les tests, puis false pour la vraie version.
+  if (window.Pi) {
+    Pi.init({ version: "2.0", sandbox: true });
+  }
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { background: #f4f1fb; }
+  .ecran { display: none; min-height: 100vh; }
+  .ecran.actif { display: block; }
+
+  #bienvenue { background: #2a1a5e; color: white; text-align: center; padding: 24px; }
+  #bienvenue.actif { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .logo { font-size: 64px; color: #f5c542; margin-bottom: 8px; }
+  #bienvenue h1 { font-size: 32px; color: #f5c542; }
+  .slogan { margin: 12px 0 28px; font-size: 18px; }
+  .carte { background: #5b3bb5; border-radius: 16px; padding: 16px; margin-bottom: 12px; width: 100%; max-width: 360px; text-align: left; }
+  .carte b { color: #f5c542; display: block; margin-bottom: 4px; }
+  .bouton-jaune { margin-top: 20px; padding: 14px 40px; border: none; border-radius: 12px; background: #f5c542; color: #2a1a5e; font-size: 18px; font-weight: bold; }
+  .info-connexion { margin-top: 14px; font-size: 14px; color: #f5c542; min-height: 20px; }
+
+  header { background: #2a1a5e; color: #f5c542; padding: 16px; font-size: 22px; font-weight: bold; }
+  .salut { padding: 16px; color: #2a1a5e; }
+  .solde { margin: 0 16px; padding: 20px; border-radius: 16px; background: #5b3bb5; color: white; }
+  .solde .montant { font-size: 36px; font-weight: bold; margin-top: 8px; }
+  .solde button { margin-top: 12px; padding: 8px 16px; border: none; border-radius: 8px; background: #f5c542; font-weight: bold; }
+  h2 { margin: 20px 16px 10px; color: #2a1a5e; font-size: 18px; }
+  .services { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px; }
+  .service { background: #d9d0f2; border-radius: 12px; padding: 16px; text-align: center; color: #2a1a5e; font-weight: bold; border: none; font-size: 15px; }
+  .service span { display: block; font-size: 28px; margin-bottom: 6px; }
+  .historique { margin: 0 16px 80px; }
+  .ligne { display: flex; justify-content: space-between; background: white; padding: 12px; border-radius: 10px; margin-bottom: 8px; color: #2a1a5e; }
+  nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-around; background: #2a1a5e; color: #f5c542; padding: 12px; font-size: 14px; }
+
+  .retour { background: none; border: none; color: #f5c542; font-size: 16px; margin-left: 12px; }
+  .formulaire { margin: 16px; padding: 20px; background: white; border-radius: 16px; color: #2a1a5e; }
+  .formulaire label { display: block; margin: 14px 0 6px; font-weight: bold; }
+  .formulaire input { width: 100%; padding: 12px; border: 2px solid #d9d0f2; border-radius: 10px; font-size: 16px; }
+  .formulaire .titre-service { font-size: 20px; font-weight: bold; }
+  .btn-payer { width: 100%; margin-top: 24px; padding: 14px; border: none; border-radius: 12px; background: #5b3bb5; color: white; font-size: 18px; font-weight: bold; }
+  .message { margin-top: 14px; padding: 10px; border-radius: 8px; background: #fff4cc; color: #6b5200; display: none; }
+
+  #confirmation { background: white; text-align: center; padding: 24px; color: #2a1a5e; }
+  .coche { width: 90px; height: 90px; margin: 20px auto; border-radius: 50%; background: #2ecc71; color: white; font-size: 56px; line-height: 90px; }
+  .recu-montant { margin: 20px 0; padding: 20px; border-radius: 16px; background: #5b3bb5; color: white; }
+  .recu-montant .gros { font-size: 40px; font-weight: bold; color: #f5c542; }
+  .detail { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e0f5; text-align: left; }
+  .detail span:first-child { font-weight: bold; }
+  .note-test { margin-top: 16px; padding: 10px; border-radius: 8px; background: #fff4cc; color: #6b5200; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="bienvenue" class="ecran actif">
+  <div class="logo">π</div>
+  <h1>PiPay World</h1>
+  <p class="slogan">Paie tes factures avec Pi, simplement.</p>
+  <div class="carte"><b>1. Choisis un service</b>Crédit téléphone, pass internet, Canal+, eau ou électricité.</div>
+  <div class="carte"><b>2. Entre tes informations</b>Ton numéro de compteur, d'abonné ou de téléphone, et le montant.</div>
+  <div class="carte"><b>3. Paie avec Pi</b>Tu confirmes dans le Pi Browser et tu reçois ton reçu.</div>
+  <button class="bouton-jaune" onclick="commencer()">Commencer</button>
+  <div class="info-connexion" id="infoConnexion"></div>
+</div>
+
+<div id="services" class="ecran">
+  <header>π PiPay World</header>
+  <div class="salut"><span id="salutation">Bonjour 👋</span><br><small>Côte d'Ivoire · Abidjan</small></div>
+  <div class="solde">
+    Solde disponible
+    <div class="montant">0.00 π</div>
+    <button>Recharger</button>
+  </div>
+  <h2>Services</h2>
+  <div class="services">
+    <button class="service" onclick="ouvrirFormulaire('Crédit téléphone', 'Numéro de téléphone')"><span>📱</span>Crédit téléphone</button>
+    <button class="service" onclick="ouvrirFormulaire('Pass internet', 'Numéro de téléphone ou de box')"><span>📶</span>Pass internet</button>
+    <button class="service" onclick="ouvrirFormulaire('Abonnement Canal+', 'Numéro d\'abonné')"><span>📺</span>Abonnement Canal+</button>
+    <button class="service" onclick="ouvrirFormulaire('Facture d\'eau', 'Numéro de contrat')"><span>💧</span>Facture d'eau</button>
+    <button class="service" onclick="ouvrirFormulaire('Facture d\'électricité', 'Numéro de compteur')"><span>⚡</span>Facture d'électricité</button>
+  </div>
+  <h2>Paiements récents</h2>
+  <div class="historique" id="historique">
+    <div class="ligne"><span>Aucun paiement</span><span>—</span></div>
+  </div>
+  <nav><span>Accueil</span><span>Payer</span><span>Historique</span><span>Portefeuille</span></nav>
+</div>
+
+<div id="formulaire" class="ecran">
+  <header><button class="retour" onclick="afficher('services')">← Retour</button></header>
+  <div class="formulaire">
+    <div class="titre-service" id="titreService">Service</div>
+    <label id="labelCompte" for="compte">Numéro de compte</label>
+    <input type="text" id="compte" placeholder="Entre ton numéro">
+    <label for="montant">Montant en Pi</label>
+    <input type="number" id="montant" placeholder="Ex : 5" min="0" step="0.01">
+    <button class="btn-payer" onclick="payer()">Payer avec Pi</button>
+    <div class="message" id="message"></div>
+  </div>
+</div>
+
+<div id="confirmation" class="ecran">
+  <div class="coche">✓</div>
+  <h1>Paiement réussi</h1>
+  <div class="recu-montant">
+    <div class="gros" id="recuMontant">0 π</div>
+    <div id="recuService">Service</div>
+  </div>
+  <div class="detail"><span>Identifiant</span><span id="recuId">—</span></div>
+  <div class="detail"><span>Compte</span><span id="recuCompte">—</span></div>
+  <div class="detail"><span>Date et heure</span><span id="recuDate">—</span></div>
+  <div class="note-test">Mode test : ce paiement est simulé. Le vrai reçu viendra de la confirmation Pi.</div>
+  <button class="bouton-jaune" onclick="afficher('services')">Retour à l'accueil</button>
+</div>
+
+<script>
+  var serviceActuel = '';
+  var utilisateurPi = null;
+
+  function afficher(id) {
+    document.querySelectorAll('.ecran').forEach(function (e) {
+      e.classList.remove('actif');
+    });
+    document.getElementById(id).classList.add('actif');
+  }
+
+  // Appelée si un paiement est resté incomplet. Vide pour l'instant.
+  function onIncompletePaymentFound(payment) {
+    console.log('Paiement incomplet trouvé', payment);
+  }
+
+  // Bouton "Commencer" : connexion au compte Pi si possible
+  function commencer() {
+    var info = document.getElementById('infoConnexion');
+
+    if (!window.Pi) {
+      info.textContent = 'Mode démo (ouvre l\'application dans le Pi Browser pour te connecter).';
+      setTimeout(function () { afficher('services'); }, 1200);
+      return;
+    }
+
+    info.textContent = 'Connexion à Pi en cours...';
+    Pi.authenticate(['username', 'payments'], onIncompletePaymentFound)
+      .then(function (auth) {
+        utilisateurPi = auth.user;
+        document.getElementById('salutation').textContent = 'Bonjour ' + auth.user.username + ' 👋';
+        afficher('services');
+      })
+      .catch(function (erreur) {
+        info.textContent = 'Connexion impossible. Réessaie dans le Pi Browser.';
+        console.error(erreur);
+      });
+  }
+
+  function ouvrirFormulaire(service, texteCompte) {
+    serviceActuel = service;
+    document.getElementById('titreService').textContent = service;
+    document.getElementById('labelCompte').textContent = texteCompte;
+    document.getElementById('compte').value = '';
+    document.getElementById('montant').value = '';
+    document.getElementById('message').style.display = 'none';
+    afficher('formulaire');
+  }
+
+  // Paiement toujours simulé à cette étape
+  function payer() {
+    var compte = document.getElementById('compte').value.trim();
+    var montant = parseFloat(document.getElementById('montant').value);
+    var message = document.getElementById('message');
+
+    if (compte === '' || isNaN(montant) || montant <= 0) {
+      message.textContent = 'Merci de remplir le numéro et un montant valide.';
+      message.style.display = 'block';
+      return;
+    }
+
+    var maintenant = new Date();
+    var date = maintenant.toLocaleDateString('fr-FR') + ' ' + maintenant.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    var identifiant = 'TEST-' + Date.now();
+
+    document.getElementById('recuMontant').textContent = montant + ' π';
+    document.getElementById('recuService').textContent = 'payé pour : ' + serviceActuel;
+    document.getElementById('recuId').textContent = identifiant;
+    document.getElementById('recuCompte').textContent = compte;
+    document.getElementById('recuDate').textContent = date;
+
+    ajouterHistorique(serviceActuel, montant, date);
+    afficher('confirmation');
+  }
+
+  function ajouterHistorique(service, montant, date) {
+    var liste = document.getElementById('historique');
+    if (liste.querySelector('.ligne span').textContent === 'Aucun paiement') {
+      liste.innerHTML = '';
+    }
+    var ligne = document.createElement('div');
+    ligne.className = 'ligne';
+    ligne.innerHTML = '<span>' + service + '<br><small>' + date + '</small></span><span>-' + montant + ' π</span>';
+    liste.insertBefore(ligne, liste.firstChild);
+  }
+</script>
+
+</body>
+  </html>
